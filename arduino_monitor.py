@@ -1,5 +1,3 @@
-
-
 import psutil
 import serial
 import time
@@ -33,7 +31,7 @@ except serial.SerialException:
 
 # --- Настройки OpenWeatherMap API ---
 OPENWEATHER_API_KEY = "OPENWEATHER_API_KEY"  # ВАШ API-КЛЮЧ
-CITY_ID = "CITY_ID"                          # ВАШ ID ГОРОДА
+CITY_ID = "CITY_ID"                                   # ВАШ ID ГОРОДА
 
 # --- Глобальные переменные для погоды ---
 weather_data = {"description": "Unknown", "temperature": 0}
@@ -45,12 +43,12 @@ last_weather_api_update_time = 0
 
 # --- Таймер для периодической отправки "пульса" в режиме ожидания ---
 last_idle_data_send_time = 0
-IDLE_DATA_SEND_INTERVAL_SEC = 3
+IDLE_DATA_SEND_INTERVAL_SEC = 0.5
 
 # --- Настройки Яндекс.Музыки ---
 YANDEX_MUSIC_TOKEN = "YANDEX_MUSIC_TOKEN" # <--- Ваш токен здесь!
-MUSIC_API_CHECK_INTERVAL_SEC = 5
-MUSIC_SCROLL_SPEED_SEC = 0.6 # <--- ИЗМЕНЕНО: теперь прокрутка каждые 0.2 секунды
+MUSIC_API_CHECK_INTERVAL_SEC = 3
+MUSIC_SCROLL_SPEED_SEC = 0.2
 
 # --- Глобальные переменные для статуса музыки ---
 current_track_info = {
@@ -151,57 +149,61 @@ def update_weather_data_func():
         description_raw = data['weather'][0]['description']
 
         description_map = {
-            "clear sky": "Clear",
-            "few clouds": "P Cloudy",
-            "scattered clouds": "Cloudy",
-            "broken clouds": "Cloudy",
-            "overcast clouds": "Overcast",
-            "shower rain": "Showr Rain",
-            "rain": "Rain",
-            "light rain": "L Rain",
-            "moderate rain": "M Rain",
-            "heavy intensity rain": "H Rain",
-            "thunderstorm": "Storm",
-            "snow": "Snow",
-            "mist": "Mist",
-            "mists": "Mist",
-            "fog": "Fog",
-            "haze": "Haze",
-            "sleet": "Sleet",
-            "light shower snow": "L Sh Snow",
-            "heavy shower snow": "H Sh Snow",
-            "rain and snow": "Rain/Snow"
+            "clear sky": "Ясно",
+            "few clouds": "Мало обл",
+            "scattered clouds": "Облачно",
+            "broken clouds": "Облачно",
+            "overcast clouds": "Пасмурно",
+            "shower rain": "Ливень",
+            "rain": "Дождь",
+            "light rain": "Л Дождь",
+            "moderate rain": "Дождь",
+            "heavy intensity rain": "Сильн до",
+            "thunderstorm": "Гроза",
+            "snow": "Снег",
+            "mist": "Туман",
+            "mists": "Туман",
+            "fog": "Туман",
+            "haze": "Дымка",
+            "sleet": "Мокрый сн",
+            "light shower snow": "Л Снегопад",
+            "heavy shower snow": "Сильн сн",
+            "rain and snow": "Дождь/Сн"
         }
 
-        description = description_map.get(description_raw.lower(), description_raw).replace(' ', '')
-        description = description[:10]
+        description = description_map.get(description_raw.lower(), description_raw)
+
+        # --- ИЗМЕНЕНО ЗДЕСЬ: Применяем транслитерацию к русскому описанию погоды ---
+        description = transliterate_cyrillic(description)
+
+        if len(description) > 10:
+            description = description[:10]
 
         weather_data["description"] = description
         weather_data["temperature"] = temp
         weather_status = "READY"
-        last_weather_api_update_time = time.time()
         print(f"Weather updated: {description}, {temp}°C")
     except requests.exceptions.RequestException as e:
         weather_status = "FAILED"
         print(f"Error updating weather: {e}")
-        weather_data["description"] = "Failed"
+        weather_data["description"] = transliterate_cyrillic("Ошибка")
         weather_data["temperature"] = -999
     except json.JSONDecodeError:
         weather_status = "FAILED"
         print("Error decoding weather JSON response.")
-        weather_data["description"] = "JSON Err"
+        weather_data["description"] = transliterate_cyrillic("JSON Ошибка")
         weather_data["temperature"] = -999
     except KeyError as e:
         weather_status = "FAILED"
         print(f"Error parsing weather data (missing key): {e}")
-        weather_data["description"] = "Parse Err"
+        weather_data["description"] = transliterate_cyrillic("Ошибка")
         weather_data["temperature"] = -999
 
 def get_weather_line_for_display():
     if weather_status == "UPDATING":
-        return "Updating..."
+        return transliterate_cyrillic("Обновляю...")
     elif weather_status == "FAILED":
-        return "Weather Failed!"
+        return transliterate_cyrillic("Погода: Ошибка!")
     else:
         desc = weather_data["description"]
         temp = weather_data["temperature"]
