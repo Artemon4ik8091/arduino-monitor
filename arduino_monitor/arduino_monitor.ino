@@ -214,7 +214,7 @@ void loop() {
       if (connection_active || last_data_received_time == 0) { 
         lcd.clear();
         lcd.setCursor(0, 0); lcd.print("Connection lost!");
-        lcd.setCursor(0, 1); lcd.print("Check OrangePI.");
+        lcd.setCursor(0, 1); lcd.print("Check PC.");
         connection_active = false;
       }
     } else {
